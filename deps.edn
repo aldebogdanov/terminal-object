@@ -1,3 +1,8 @@
 {:deps {overtone/overtone {:mvn/version "0.16.3331"}
-        com.hyperfiddle/rcf {:mvn/version "20220926-202227"}
-        missionary/missionary {:mvn/version "b.46"}}}
+        com.hyperfiddle/rcf {:mvn/version "20220926-202227"}}
+
+ :aliases
+  {:music
+   {:jvm-opts ["-XX:+UseZGC"
+               "-XX:SoftMaxHeapSize=512m"
+               "-XX:MaxHeapSize=2g"]}}}
