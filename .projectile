@@ -1,0 +1,11 @@
+-.DS_Store
+
+-/.lsp
+-/.git
+-/.cursor
+-/.calva
+-/.clj-kondo
+-/.vscode
+-/.cpcache
+
+-*.tmp
