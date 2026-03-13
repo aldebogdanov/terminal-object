@@ -49,7 +49,7 @@
 ;; 5. Final output writer → bus 0
 ;; ─────────────────────────────────────────
 (defsynth master-out [in-bus 0]
-  (out:ar 0 (* 1.5 (in:ar in-bus 2))))
+  (out:ar 0 (* 0.8 (in:ar in-bus 2))))
 
 
 ;; Intermediate buses for the chain
@@ -72,5 +72,6 @@
       (kill node)))
   (reset! !master-chain {}))
 
-(start-master-chain!)
-(stop-master-chain!)
+(comment
+  (start-master-chain!)
+  (stop-master-chain!))

@@ -3,7 +3,7 @@
             [hyperfiddle.rcf]
             [terminal-object.core :refer [metro start-player stop-player restart-player
                                           set-bpm-and-restart pset! pdrop! note->hz]]
-            [terminal-object.session-zero.master :refer [master-bus master-group]]
+            [terminal-object.session-zero.master :refer [master-bus master-group start-master-chain! stop-master-chain!]]
             [terminal-object.session-zero.kick :refer [psy-kick]]
             [terminal-object.session-zero.bass :refer [roll-bass !bass-synth]]
             [terminal-object.session-zero.crash :refer [soft-massive-crash]]
@@ -12,31 +12,42 @@
 
 (defn kick-4-4 [beat]
   (when (zero? (mod beat 4))
-    (doseq [i (range 4)]
-      (at (metro (+ beat i)) (psy-kick [:head master-group] :freq 55 :amp 0.75 :out-bus master-bus)))))
+    (at (metro (+ beat 0)) (psy-kick [:head master-group] :freq 55 :amp 0.75 :out-bus master-bus))
+    (at (metro (+ beat 1)) (psy-kick [:head master-group] :freq 55 :amp 0.75 :out-bus master-bus))
+    (at (metro (+ beat 2)) (psy-kick [:head master-group] :freq 55 :amp 0.75 :out-bus master-bus))
+    (at (metro (+ beat 3)) (psy-kick [:head master-group] :freq 55 :amp 0.75 :out-bus master-bus))))
 
 (defn bass-triple [beat]
   (doseq [i (range 3)]
     (at (metro (+ beat (/ i 3))) (roll-bass [:head master-group] :freq 55
-                                            :filtfreq (case i 0 500 800)
+                                            :filtfreq (case i 0 500 650)
+                                            :dur 0.12
+                                            :amp 0.34
                                             :out-bus master-bus))))
 
+(defn main [beat]
+  (doseq [i (range 3)]
+    (at (metro (+ beat (/ i 3))) (roll-bass [:head master-group] :freq 55
+                                            :filtfreq (case i 0 500 650)
+                                            :dur 0.14
+                                            :amp 0.34
+                                            :out-bus master-bus)))
+  (at (metro (+ beat 0)) (psy-kick [:head master-group] :freq 27.5 :amp 0.75 :amp-decay 0.5 :out-bus master-bus)))
+
 (defn rolling-lead-pattern-mono [b]
-  (when (zero? (mod b 4))
-    (doseq [i (range 4)]
-      (let [notes #_[:a3 nil :a3 :a3] (take 4 (repeatedly #(rand-nth [:a3 :a3 :c4 :e4])))]
-        (doseq [[idx note] (map-indexed vector notes)]
-          (let [beat-offset (+ b i (* idx (/ 1 4)))
-                accent (if (zero? (mod idx 4)) 1.0 0.7)]
-            (when note
-              (at (metro (+ beat-offset 0.00))
-                  (ctl @!bass-synth
-                       :freq (note->hz note)
-                       :gate 1    ;; открываем (retrigger)
-                       :amp (* 0.6 accent)))
-              (at (metro (+ beat-offset (/ 60 (metro :bpm) (if (or (not= 1 idx) #_(some? (nth notes idx))) 1 2))))
-                  (ctl @!bass-synth
-                       :gate 0)))))))))
+  (doseq [idx (range 4)]
+    (let [beat-offset (+ b (* idx (/ 1 4)))
+          accent (if (zero? (mod idx 4)) 1.0 0.7)]
+      (at (metro (+ beat-offset 0.00))
+          (ctl @!bass-synth
+               :freq (note->hz :a1)
+               :filtfreq 800
+               :gate 1    ;; открываем (retrigger)
+               :lfo-delta (+ 1 (* 0.2 (- 0.5 (rand))))
+               :amp (* 0.6 accent)))
+      (at (metro (+ beat-offset (/ 60 (metro :bpm) (if (not= 1 idx) 2 4))))
+          (ctl @!bass-synth
+               :gate 0)))))
 
 (defn hats-8 [beat]
   (doseq [i (range 2)]
@@ -73,24 +84,15 @@
   (pset! :o 'o-hats)
   (pdrop! :o)
 
-  (pset! :t 'toms)
+  (pset! :h 'hats-8)
   (pdrop! :t)
   (pdrop! :c)
   (pset! :c 'crash)
   (pset! :c 'crash :l 'lead-atonal)
 
-  (pdrop! :b)
-  
-  (pset! :k 'kick-4-4
-         :b 'bass-triple
-         :l 'rolling-lead-pattern-mono
-         :h 'hats-8)
-  (pset! :h 'hats-8)
-  (pset! :l 'rolling-lead-pattern-mono)
-  (pdrop! :cl)
+  (pset! :m 'main
+         :l 'rolling-lead-pattern-mono)
   (pdrop! :l)
-  (pdrop! :h)
-  (pdrop! :k)
 
   (pdrop! :k :h :b)
 
@@ -103,9 +105,13 @@
   (metro :bpm)  ; Check current beat
   ;; ===== TEMPO =====
   (set-bpm-and-restart 165)  ; Change BPM, restart if playing
-  (set-bpm-and-restart 210)
+  (set-bpm-and-restart 240)
   (set-bpm-and-restart 0)
   @!bpm  ; Check current BPM
+
+  ;; ==== MASTER CHAIN ====
+  (start-master-chain!)
+  (stop-master-chain!)
  
   ;; ===== DEBUG =====
   (server-info)

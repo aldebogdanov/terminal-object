@@ -17,20 +17,16 @@
   [freq 110
    filtfreq 800
    res 0.3
-   lfo-depth 200
    amp 0.6
-   detune 0.01
    dur 0.1
    out-bus 0]
-  (let [lfo (in:kr lfo-bus)
-        filt-mod (+ filtfreq (* lfo lfo-depth))
-        dt (* freq detune)
-        osc (+ (saw (+ freq dt)) (saw (- freq dt)) (sin-osc (/ freq 1.0)))
-        filtered (rlpf osc filt-mod res)
+  (let [osc (+ (saw freq) (sin-osc (/ freq 1.0)))
+        filtered (rlpf osc filtfreq res)
         distorted (distort (* filtered 1.5))
         ;; Используем perc вместо adsr для фиксированной длительности
         env (env-gen (perc 0.01 dur) :action FREE)]
     (out:ar out-bus (* amp env (pan2 distorted 0)))))
+
 
 (defsynth rolling-bass-mono
   [freq 110
@@ -38,13 +34,14 @@
    res 0.3
    lfo-rate 8
    lfo-depth 200
+   lfo-delta 1
    amp 0.6
    detune 0.01
    gate 0
    out-bus 0]
   (let [;; LFO работает непрерывно в рамках одного инстанса
         lfo (sin-osc lfo-rate)
-        filt-mod (+ filtfreq (* lfo lfo-depth))
+        filt-mod (+ filtfreq (* lfo lfo-depth lfo-delta))
         dt (* freq detune)
         osc (+ (saw (+ freq dt)) (saw (- freq dt)) #_(square (* freq (/ 3 2))))
         filtered (hpf (rlpf osc filt-mod res) 105)
@@ -55,17 +52,19 @@
 (defonce !bass-synth (atom nil))
 (defn start-bass-synth!
   []
+  (kill @!bass-synth)
   (reset! !bass-synth (rolling-bass-mono [:head master-group]
                                          :freq 110
                                          :amp 0.45
-                                         :lfo-rate (/ (metro :bpm) 60 16)
+                                         :lfo-rate (/ (metro :bpm) 60 64)
                                          :lfo-depth 150
                                          :detune 0.01
                                          :out-bus master-bus)))
 
+
+
 (comment
   (start-bass-synth!)
-  (ctl @!bass-synth :gate 1)
-
+  
   (stop)
   )
